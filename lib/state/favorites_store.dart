@@ -29,6 +29,8 @@ class FavoritesStore extends ChangeNotifier {
 
   bool _isLoaded = false;
   bool _isDisposed = false;
+  Object? _persistenceError;
+  Future<void> _pendingWrite = Future<void>.value();
 
   FavoritesStore({FavoritesPreferences? preferences})
     : _preferences = preferences ?? SharedPreferencesFavoritesPreferences();
@@ -36,12 +38,14 @@ class FavoritesStore extends ChangeNotifier {
   Set<int> get favoriteIds => Set<int>.unmodifiable(_favoriteIds);
 
   bool get isLoaded => _isLoaded;
+  Object? get persistenceError => _persistenceError;
 
   bool isFavorite(int pokemonId) {
     return _favoriteIds.contains(pokemonId);
   }
 
   Future<void> loadFavorites() async {
+    if (_isDisposed) return;
     final List<String>? savedIds = await _preferences.getStringList(
       _storageKey,
     );
@@ -62,6 +66,9 @@ class FavoritesStore extends ChangeNotifier {
   }
 
   Future<void> toggleFavorite(int pokemonId) async {
+    if (_isDisposed) {
+      throw StateError('Cannot change favorites after the store is disposed.');
+    }
     if (pokemonId <= 0) {
       throw ArgumentError.value(
         pokemonId,
@@ -81,11 +88,33 @@ class FavoritesStore extends ChangeNotifier {
     }
 
     notifyListeners();
+    await _queuePersistence();
+  }
 
-    await _preferences.setStringList(
-      _storageKey,
-      _favoriteIds.map((id) => id.toString()).toList(),
-    );
+  Future<void> retryPersistence() => _queuePersistence();
+
+  Future<void> _queuePersistence() {
+    final Future<void> nextWrite = _pendingWrite.then((_) async {
+      if (_isDisposed) return;
+      try {
+        await _preferences.setStringList(
+          _storageKey,
+          _favoriteIds.map((id) => id.toString()).toList(),
+        );
+        if (!_isDisposed) {
+          _persistenceError = null;
+          notifyListeners();
+        }
+      } catch (error) {
+        if (!_isDisposed) {
+          _persistenceError = error;
+          notifyListeners();
+        }
+      }
+    });
+
+    _pendingWrite = nextWrite;
+    return nextWrite;
   }
 
   @override

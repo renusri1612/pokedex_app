@@ -1,16 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:pokedex_app/models/pokemon.dart';
 import 'package:pokedex_app/services/pokemon_api_service.dart';
+import 'package:pokedex_app/state/favorites_scope.dart';
+import 'package:pokedex_app/screens/pokemon_detail_screen.dart';
 
 class PokemonListScreen extends StatefulWidget {
-  const PokemonListScreen({super.key});
+  const PokemonListScreen({super.key, this.apiServiceFactory});
+
+  final PokemonApiService Function()? apiServiceFactory;
 
   @override
   State<PokemonListScreen> createState() => _PokemonListScreenState();
 }
 
 class _PokemonListScreenState extends State<PokemonListScreen> {
-  final PokemonApiService _apiService = PokemonApiService();
+  late final PokemonApiService _apiService =
+      widget.apiServiceFactory?.call() ?? PokemonApiService();
 
   final List<Pokemon> _pokemon = [];
   final TextEditingController _searchController = TextEditingController();
@@ -57,7 +62,15 @@ class _PokemonListScreenState extends State<PokemonListScreen> {
       if (!mounted) return;
 
       setState(() {
-        _pokemon.addAll(newPokemon);
+        final Set<int> existingIds = _pokemon
+            .map((pokemon) => pokemon.id)
+            .toSet();
+        for (final Pokemon pokemon in newPokemon) {
+          if (existingIds.add(pokemon.id)) {
+            _pokemon.add(pokemon);
+          }
+        }
+        // The API offset counts returned rows, including any duplicate IDs.
         _offset += newPokemon.length;
         _hasMore = newPokemon.length == _pageSize;
         _isLoading = false;
@@ -134,9 +147,26 @@ class _PokemonListScreenState extends State<PokemonListScreen> {
             },
           ),
         ),
+        const Padding(
+          padding: EdgeInsets.fromLTRB(16, 6, 16, 0),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              'Search covers Pokémon loaded so far. Load more to search additional Pokémon.',
+              style: TextStyle(fontSize: 12, color: Colors.black54),
+            ),
+          ),
+        ),
         Expanded(
           child: _filteredPokemon.isEmpty
-              ? const Center(child: Text('No Pokémon match your search.'))
+              ? Center(
+                  child: Text(
+                    _hasMore
+                        ? 'No loaded Pokemon match. Load more Pokemon to search further.'
+                        : 'No Pokemon match your search.',
+                    textAlign: TextAlign.center,
+                  ),
+                )
               : GridView.builder(
                   padding: const EdgeInsets.all(12),
                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -148,36 +178,63 @@ class _PokemonListScreenState extends State<PokemonListScreen> {
                   itemCount: _filteredPokemon.length,
                   itemBuilder: (context, index) {
                     final Pokemon pokemon = _filteredPokemon[index];
+                    final favoritesStore = FavoritesScope.of(context);
 
                     return Card(
                       clipBehavior: Clip.antiAlias,
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Expanded(
-                            child: Image.network(
-                              'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${pokemon.id}.png',
-                              fit: BoxFit.contain,
-                              errorBuilder: (context, error, stackTrace) {
-                                return const Icon(
-                                  Icons.catching_pokemon,
-                                  size: 64,
-                                );
-                              },
+                      child: InkWell(
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => PokemonDetailScreen(
+                              pokemon: pokemon,
+                              apiServiceFactory: widget.apiServiceFactory,
                             ),
                           ),
-                          Padding(
-                            padding: const EdgeInsets.all(12),
-                            child: Text(
-                              pokemon.name[0].toUpperCase() +
-                                  pokemon.name.substring(1),
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Align(
+                              alignment: Alignment.topRight,
+                              child: IconButton(
+                                icon: Icon(
+                                  favoritesStore.isFavorite(pokemon.id)
+                                      ? Icons.favorite
+                                      : Icons.favorite_border,
+                                  color: favoritesStore.isFavorite(pokemon.id)
+                                      ? Colors.red
+                                      : Colors.grey,
+                                ),
+                                onPressed: () {
+                                  favoritesStore.toggleFavorite(pokemon.id);
+                                },
                               ),
                             ),
-                          ),
-                        ],
+                            Expanded(
+                              child: Image.network(
+                                'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${pokemon.id}.png',
+                                fit: BoxFit.contain,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return const Icon(
+                                    Icons.catching_pokemon,
+                                    size: 64,
+                                  );
+                                },
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.all(12),
+                              child: Text(
+                                pokemon.name[0].toUpperCase() +
+                                    pokemon.name.substring(1),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     );
                   },
@@ -188,7 +245,15 @@ class _PokemonListScreenState extends State<PokemonListScreen> {
             padding: EdgeInsets.all(8),
             child: Text('Could not load more Pokémon.'),
           ),
-        if (_hasMore)
+        if (_hasError)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+            child: TextButton(
+              onPressed: _loadPokemon,
+              child: const Text('Retry loading more'),
+            ),
+          ),
+        if (_hasMore && !_hasError)
           Padding(
             padding: const EdgeInsets.all(12),
             child: _isLoading
