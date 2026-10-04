@@ -90,7 +90,7 @@ void main() {
     await tester.tap(find.text('Ivysaur'));
     await tester.pumpAndSettle();
 
-    expect(find.text('#2 Ivysaur'), findsOneWidget);
+    expect(find.text('#002'), findsOneWidget);
     expect(find.text('Grass'), findsOneWidget);
     expect(find.text('Poison'), findsOneWidget);
     expect(find.text('Chlorophyll'), findsOneWidget);
@@ -120,7 +120,7 @@ void main() {
     await tester.tap(find.text('Ivysaur'));
     await tester.pumpAndSettle();
 
-    expect(find.text('#2 Ivysaur'), findsOneWidget);
+    expect(find.text('#002'), findsOneWidget);
     expect(find.text('Grass'), findsOneWidget);
     expect(find.text('Poison'), findsOneWidget);
 

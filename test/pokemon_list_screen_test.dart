@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -64,6 +65,80 @@ Future<void> _closeList(WidgetTester tester, FavoritesStore store) async {
 }
 
 void main() {
+  testWidgets('grid column count adapts to available width', (tester) async {
+    addTearDown(tester.view.resetPhysicalSize);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final FavoritesStore store = await _showList(
+      tester,
+      (_) async => _response(_firstPage()),
+    );
+
+    int columns() =>
+        (tester.widget<GridView>(find.byType(GridView)).gridDelegate
+                as SliverGridDelegateWithFixedCrossAxisCount)
+            .crossAxisCount;
+
+    tester.view.physicalSize = const Size(1440, 900);
+    await tester.pumpAndSettle();
+    expect(columns(), 4);
+
+    tester.view.physicalSize = const Size(1024, 800);
+    await tester.pumpAndSettle();
+    expect(columns(), 3);
+
+    tester.view.physicalSize = const Size(800, 800);
+    await tester.pumpAndSettle();
+    expect(columns(), 2);
+
+    tester.view.physicalSize = const Size(390, 800);
+    await tester.pumpAndSettle();
+    expect(columns(), 1);
+
+    await _closeList(tester, store);
+  });
+
+  testWidgets('hover animates card without blocking favorite or detail taps', (
+    tester,
+  ) async {
+    final FavoritesStore store = await _showList(
+      tester,
+      (_) async => _response(_firstPage()),
+    );
+    final Finder card = find.byKey(const ValueKey('pokemon-card-1'));
+    final Rect beforeHover = tester.getRect(card);
+    final TestGesture mouse = await tester.createGesture(
+      kind: PointerDeviceKind.mouse,
+    );
+    await mouse.addPointer(location: Offset.zero);
+    await mouse.moveTo(beforeHover.center);
+    await tester.pump(const Duration(milliseconds: 200));
+
+    final Rect afterHover = tester.getRect(card);
+    final AnimatedContainer animatedCard = tester.widget<AnimatedContainer>(
+      card,
+    );
+    expect(animatedCard.transform!.storage[13], -4);
+    expect(afterHover.width, beforeHover.width);
+
+    await tester.tap(
+      find.descendant(of: card, matching: find.byTooltip('Add favorite')),
+    );
+    await tester.pump();
+    expect(store.isFavorite(1), isTrue);
+    expect(find.byType(GridView), findsOneWidget);
+
+    await tester.tap(find.text('Pokemon1'));
+    await tester.pumpAndSettle();
+    expect(
+      find.descendant(of: find.byType(AppBar), matching: find.text('Pokemon1')),
+      findsOneWidget,
+    );
+
+    await mouse.removePointer();
+    await _closeList(tester, store);
+  });
+
   testWidgets('search trims whitespace and ignores letter case', (
     tester,
   ) async {

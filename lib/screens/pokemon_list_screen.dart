@@ -167,75 +167,47 @@ class _PokemonListScreenState extends State<PokemonListScreen> {
                     textAlign: TextAlign.center,
                   ),
                 )
-              : GridView.builder(
-                  padding: const EdgeInsets.all(12),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 12,
-                    mainAxisSpacing: 12,
-                    childAspectRatio: 0.9,
-                  ),
-                  itemCount: _filteredPokemon.length,
-                  itemBuilder: (context, index) {
-                    final Pokemon pokemon = _filteredPokemon[index];
-                    final favoritesStore = FavoritesScope.of(context);
+              : LayoutBuilder(
+                  builder: (context, constraints) {
+                    final List<Pokemon> visiblePokemon = _filteredPokemon;
+                    final double width = constraints.maxWidth;
+                    final int columnCount = width >= 1280
+                        ? 4
+                        : width >= 980
+                        ? 3
+                        : width >= 560
+                        ? 2
+                        : 1;
 
-                    return Card(
-                      clipBehavior: Clip.antiAlias,
-                      child: InkWell(
-                        onTap: () => Navigator.of(context).push(
-                          MaterialPageRoute<void>(
-                            builder: (_) => PokemonDetailScreen(
-                              pokemon: pokemon,
-                              apiServiceFactory: widget.apiServiceFactory,
+                    return GridView.builder(
+                      padding: const EdgeInsets.all(12),
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: columnCount,
+                        crossAxisSpacing: 12,
+                        mainAxisSpacing: 12,
+                        childAspectRatio: 1,
+                      ),
+                      itemCount: visiblePokemon.length,
+                      itemBuilder: (context, index) {
+                        final Pokemon pokemon = visiblePokemon[index];
+                        final favoritesStore = FavoritesScope.of(context);
+
+                        return _PokemonCard(
+                          pokemon: pokemon,
+                          isFavorite: favoritesStore.isFavorite(pokemon.id),
+                          onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => PokemonDetailScreen(
+                                pokemon: pokemon,
+                                apiServiceFactory: widget.apiServiceFactory,
+                              ),
                             ),
                           ),
-                        ),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Align(
-                              alignment: Alignment.topRight,
-                              child: IconButton(
-                                icon: Icon(
-                                  favoritesStore.isFavorite(pokemon.id)
-                                      ? Icons.favorite
-                                      : Icons.favorite_border,
-                                  color: favoritesStore.isFavorite(pokemon.id)
-                                      ? Colors.red
-                                      : Colors.grey,
-                                ),
-                                onPressed: () {
-                                  favoritesStore.toggleFavorite(pokemon.id);
-                                },
-                              ),
-                            ),
-                            Expanded(
-                              child: Image.network(
-                                'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${pokemon.id}.png',
-                                fit: BoxFit.contain,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return const Icon(
-                                    Icons.catching_pokemon,
-                                    size: 64,
-                                  );
-                                },
-                              ),
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.all(12),
-                              child: Text(
-                                pokemon.name[0].toUpperCase() +
-                                    pokemon.name.substring(1),
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
+                          onToggleFavorite: () {
+                            favoritesStore.toggleFavorite(pokemon.id);
+                          },
+                        );
+                      },
                     );
                   },
                 ),
@@ -264,6 +236,115 @@ class _PokemonListScreenState extends State<PokemonListScreen> {
                   ),
           ),
       ],
+    );
+  }
+}
+
+class _PokemonCard extends StatefulWidget {
+  const _PokemonCard({
+    required this.pokemon,
+    required this.isFavorite,
+    required this.onTap,
+    required this.onToggleFavorite,
+  });
+
+  final Pokemon pokemon;
+  final bool isFavorite;
+  final VoidCallback onTap;
+  final VoidCallback onToggleFavorite;
+
+  @override
+  State<_PokemonCard> createState() => _PokemonCardState();
+}
+
+class _PokemonCardState extends State<_PokemonCard> {
+  bool _isHovered = false;
+  bool _hasKeyboardFocus = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final bool isEmphasized = _isHovered || _hasKeyboardFocus;
+    final ColorScheme colors = Theme.of(context).colorScheme;
+    final Pokemon pokemon = widget.pokemon;
+
+    return AnimatedContainer(
+      key: ValueKey<String>('pokemon-card-${pokemon.id}'),
+      duration: const Duration(milliseconds: 160),
+      curve: Curves.easeOutCubic,
+      transform: Matrix4.translationValues(0, isEmphasized ? -4 : 0, 0),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: isEmphasized
+            ? [
+                BoxShadow(
+                  color: colors.primary.withAlpha(35),
+                  blurRadius: 14,
+                  offset: const Offset(0, 7),
+                ),
+              ]
+            : const [],
+      ),
+      child: Card(
+        margin: EdgeInsets.zero,
+        clipBehavior: Clip.antiAlias,
+        elevation: 0,
+        child: InkWell(
+          onTap: widget.onTap,
+          onHover: (isHovered) {
+            if (_isHovered != isHovered) {
+              setState(() => _isHovered = isHovered);
+            }
+          },
+          onFocusChange: (hasFocus) {
+            if (_hasKeyboardFocus != hasFocus) {
+              setState(() => _hasKeyboardFocus = hasFocus);
+            }
+          },
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Align(
+                alignment: Alignment.topRight,
+                child: IconButton(
+                  tooltip: widget.isFavorite
+                      ? 'Remove favorite'
+                      : 'Add favorite',
+                  icon: Icon(
+                    widget.isFavorite ? Icons.favorite : Icons.favorite_border,
+                    color: widget.isFavorite ? Colors.red : Colors.grey,
+                  ),
+                  onPressed: widget.onToggleFavorite,
+                ),
+              ),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: Image.network(
+                    'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${pokemon.id}.png',
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) {
+                      return const Icon(Icons.catching_pokemon, size: 64);
+                    },
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: Text(
+                  pokemon.name[0].toUpperCase() + pokemon.name.substring(1),
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
