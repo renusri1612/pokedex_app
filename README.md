@@ -1,115 +1,207 @@
-# Flutter Pokédex
+# Pokémon Pokédex
 
-A small Flutter app for browsing Pokémon from [PokéAPI](https://pokeapi.co/), viewing their details, and saving favorites on the device. The project uses Flutter's built-in widget/state tools and keeps network, parsing, and favorite persistence code in separate files.
+A cross-platform Pokédex built with **Flutter and Dart** that lets you explore Pokémon, view detailed stats, search the Pokémon you've loaded, and save your favorites locally.
+
+Powered by [PokéAPI](https://pokeapi.co/), this project demonstrates API integration, JSON parsing, state management, local persistence, responsive UI design, and automated testing.
+
+## Screenshots
+
+### Pokémon Explorer
+
+Browse Pokémon with artwork, names, search, and pagination.
+
+![Pokémon list screen](screenshots/pokemon-list.png)
+
+### Pokémon Details
+
+Explore Pokémon artwork, types, height, weight, abilities, and base stats.
+
+![Pokémon detail screen](screenshots/pokemon-details.png)
+
+### Favorites
+
+View your saved Pokémon and access their detail screens.
+
+![Pokémon favorites screen](screenshots/favorites.png)
+
+### Pokémon Stats
+
+Visualize a Pokémon's base stats using the stats chart.
+
+![Pokémon stats screen](screenshots/pokemon-stats.png)
 
 ## Features
 
-- Browse Pokémon in pages of 20 with names and sprite images.
-- Search case-insensitively by part of a Pokémon name. Search covers records loaded so far; use **Load More Pokémon** to include more records.
-- Open a Pokémon from the list or Favorites to view its ID, artwork, types, measurements, abilities, and available base stats.
-- Add or remove favorites from the list, detail, and Favorites screens. Changes appear through one shared favorites store.
-- Save favorite IDs with `shared_preferences` and restore them on startup. A visible retry action appears if saving fails.
-- Show loading, empty, and retryable error states for list, detail, and Favorites requests.
+* **Pokémon explorer:** Browse Pokémon in pages of 20.
+* **Search:** Search case-insensitively by part of a Pokémon's name among records already loaded.
+* **Detailed profiles:** View Pokémon IDs, artwork, types, measurements, abilities, and available base stats.
+* **Favorites:** Add or remove favorites from the list, details, and Favorites screens.
+* **Shared state:** Keep favorite changes synchronized across screens using a shared favorites store.
+* **Local persistence:** Save favorite Pokémon IDs using `shared_preferences` and restore them on startup.
+* **Error handling:** Display loading, empty, and retryable error states.
+* **Responsive interface:** Adapt the Pokémon grid and detail layout to available screen width.
+* **Automated tests:** Test models, API behavior, favorites persistence, and widgets.
 
-## Screens and navigation
+## Tech Stack
 
-The main screen has bottom navigation for **Pokédex** and **Favorites**. Selecting a list or Favorites item pushes the same detail screen. The list and Favorites screens remain in an `IndexedStack` while switching tabs, so their widget state is retained.
+| Technology           | Purpose                           |
+| -------------------- | --------------------------------- |
+| Flutter              | Cross-platform UI framework       |
+| Dart                 | Application logic and data models |
+| PokéAPI              | Pokémon list and detail data      |
+| `http`               | HTTP requests and API integration |
+| `shared_preferences` | Local favorites persistence       |
+| `flutter_test`       | Unit and widget testing           |
+| `flutter_lints`      | Static-analysis rules             |
 
-## Technologies
+## Getting Started
 
-| Technology/package | Purpose |
-| --- | --- |
-| Flutter and Dart | Cross-platform UI and application logic |
-| `http` | Calls to PokéAPI; clients can be injected for tests |
-| `shared_preferences` | Stores favorite Pokémon IDs locally |
-| `flutter_test` | Unit and widget tests |
-| `flutter_lints` | Dart/Flutter static-analysis rules |
-| `cupertino_icons` | Cupertino icon package included in project dependencies |
+### Prerequisites
 
-The package versions and SDK constraint are declared in [`pubspec.yaml`](pubspec.yaml); resolved versions are recorded in `pubspec.lock`.
+* Flutter SDK and Dart.
+* Visual Studio Code with the Flutter and Dart extensions (recommended).
+* Google Chrome for running the web version.
+* For Android: Android SDK, platform tools, and an emulator or connected device.
+* Internet access to retrieve Pokémon data and remote artwork.
 
-## Prerequisites
+### Installation
 
-- Windows 10 or 11.
-- Flutter SDK installed and available on `PATH` (Dart is included with Flutter).
-- Google Chrome installed to run the web app.
-- Visual Studio Code with the Flutter and Dart extensions is recommended, but optional.
-- For Android: Android Studio, Android SDK and platform tools, an emulator or USB-connected device, and an accepted Android SDK license.
-- Internet access for Pokémon data and remote images.
+Clone the repository:
 
-Use PowerShell from the project directory:
+```bash
+git clone https://github.com/renusri1612/pokedex_app.git
+cd pokedex_app
+```
 
-```powershell
-Set-Location C:\srcfolder\pokedex_app
+Install dependencies:
+
+```bash
 flutter doctor
-flutter --version
 flutter pub get
 ```
 
-`flutter doctor` reports whether Flutter can find the relevant platform tools. For Android setup, install the SDK/emulator through Android Studio and then run `flutter doctor --android-licenses` if requested.
+If you are setting up Android development for the first time, follow the Flutter Android setup guide and accept the Android SDK licenses if prompted.
 
-## Run the app
+### Run the App
 
-Run in Chrome:
+**Web — Chrome**
 
-```powershell
+```bash
 flutter devices
 flutter run -d chrome
 ```
 
-Run on Android after starting an emulator or connecting an authorized device:
+**Android**
 
-```powershell
+Start an emulator or connect an authorized Android device, then run:
+
+```bash
 flutter devices
 flutter run -d <device-id>
 ```
 
-Replace `<device-id>` with an ID printed by `flutter devices`. Android configuration includes the Internet permission in `android/app/src/main/AndroidManifest.xml`. Android execution depends on a working local Android SDK/device setup; this README does not claim a particular device was tested.
+Replace `<device-id>` with the device ID reported by `flutter devices`.
 
-## Project structure
+## Running Tests
 
-```text
-lib/
-  main.dart                         App startup, tab navigation, app-wide states
-  models/pokemon.dart               Pokémon model and defensive JSON parsing
-  services/pokemon_api_service.dart HTTP requests, response checks, timeouts
-  screens/
-    pokemon_list_screen.dart        List, local search, pagination
-    pokemon_detail_screen.dart      Detail loading and favorite action
-    favorites_screen.dart           Shared favorites list and detail loading
-  state/
-    favorites_store.dart            Favorite IDs and local persistence
-    favorites_scope.dart             Makes the shared store available to widgets
-test/                               Deterministic unit and widget tests
-android/                            Android project and Internet permission
+Format the Dart code:
+
+```bash
+dart format .
 ```
 
-`main()` calls `runApp()` with `PokedexApp`. The screen widgets call `PokemonApiService`, which sends HTTP requests and turns JSON into `Pokemon` objects. `FavoritesStore` is the single in-memory source of favorite IDs and writes IDs to `shared_preferences`; `FavoritesScope` exposes that store to screens.
+Run static analysis:
 
-## PokéAPI usage
-
-The app requests paginated list data from `https://pokeapi.co/api/v2/pokemon?limit=...&offset=...` and detail data from `https://pokeapi.co/api/v2/pokemon/{id}`. The service validates response status and shape, reports malformed JSON clearly, and gives each request a 15-second timeout. Detail JSON supplies the fields used for artwork, types, height, weight, abilities, and base stats. If optional fields are absent, the detail screen omits those sections or falls back to the sprite URL.
-
-Tests inject `http.testing.MockClient` responses, so the automated suite does not need live PokéAPI access.
-
-## Development and tests
-
-From the project directory:
-
-```powershell
-dart format .
+```bash
 flutter analyze
-flutter test
+```
+
+Run the automated test suite:
+
+```bash
 flutter test --concurrency=1
 ```
 
-Formatting rewrites Dart source into a consistent style. `flutter analyze` checks code without running the app. `flutter test` runs unit and widget tests; use `--concurrency=1` to run test files one at a time, which can simplify debugging. These commands are separate from launching the app.
+The tests use mocked HTTP responses where appropriate, allowing API-related behavior to be tested without depending on live PokéAPI responses.
 
-## Known limitations
+## Project Structure
 
-- Search is local and includes only Pokémon pages already loaded; it is not a server-wide search.
-- Pagination is manual, through a load-more control.
-- Pokémon details and images are fetched from remote services; Pokémon details are not cached for offline use. Favorites persist as IDs, but displaying Favorites still needs detail requests.
-- Favorite changes update the UI immediately. If local saving fails, the app displays an error and retry action. If the app is closed before a successful retry, the latest changes may not be on disk.
-- Request timeouts stop the app from waiting, but `Future.timeout` does not cancel the underlying `http.Client` request.
-- The app depends on PokéAPI and remote image availability; no deployment or offline mode is included.
+```text
+lib/
+├── main.dart
+├── models/
+│   └── pokemon.dart
+├── services/
+│   └── pokemon_api_service.dart
+├── screens/
+│   ├── pokemon_list_screen.dart
+│   ├── pokemon_detail_screen.dart
+│   └── favorites_screen.dart
+└── state/
+    ├── favorites_store.dart
+    └── favorites_scope.dart
+
+screenshots/
+├── pokemon-list.png
+├── pokemon-details.png
+├── pokemon-stats.png
+└── favorites.png
+
+test/
+android/
+web/
+README.md
+pubspec.yaml
+pubspec.lock
+```
+
+## Architecture Overview
+
+* **`Pokemon` model:** Represents Pokémon data and handles defensive JSON parsing.
+* **`PokemonApiService`:** Fetches list and detail data, validates API responses, and handles request errors and timeouts.
+* **Screen widgets:** Display the Pokémon list, individual details, and saved favorites.
+* **`FavoritesStore`:** Maintains the shared favorite IDs and persists them locally.
+* **`FavoritesScope`:** Makes the shared favorites store accessible to the relevant screens.
+* **Automated tests:** Exercise model parsing, API behavior, persistence, and UI interactions.
+
+The app separates API communication, data representation, UI screens, and favorite-state management to make the code easier to understand, test, and maintain.
+
+## API Reference
+
+This project uses [PokéAPI](https://pokeapi.co/).
+
+Pokémon list endpoint:
+
+`https://pokeapi.co/api/v2/pokemon?limit=20&offset=0`
+
+Pokémon detail endpoint:
+
+`https://pokeapi.co/api/v2/pokemon/{id}`
+
+The API service validates responses and uses request timeouts. Automated tests can inject mock HTTP clients to simulate responses and errors.
+
+## Known Limitations
+
+* Search covers only Pokémon records loaded so far; it is not a server-wide search.
+* Pagination is manual through a load-more control.
+* Pokémon details and images require network access and are not cached for offline browsing.
+* Favorites are stored locally on the device and are not synchronized across devices.
+* If saving favorites fails, the app provides a retry action; changes that have not been successfully saved may be lost if the app closes.
+* The app depends on PokéAPI and remote image availability.
+
+## Future Improvements
+
+* Add Pokémon type filters and sorting.
+* Improve offline support with cached Pokémon details.
+* Add more advanced search and discovery options.
+* Expand accessibility and UI interaction tests.
+
+## Author
+
+**Renusri Vardhi**
+
+GitHub: [@renusri1612](https://github.com/renusri1612)
+
+---
+
+Built with Flutter and Dart, using data from [PokéAPI](https://pokeapi.co/).
